@@ -22,7 +22,6 @@ st.caption("Powered by n8n → Supabase (PostgreSQL) → Streamlit")
 def get_connection():
     """
     Open a fresh connection for each query.
-    No caching, no autocommit – safer with Supabase/pgBouncer.
     """
     conn = psycopg2.connect(
         host=st.secrets["db"]["host"],
@@ -144,7 +143,26 @@ if df.empty:
     st.warning("No data found for the selected filters.")
     st.stop()
 
+# Ensure proper types
 df["order_placement_date"] = pd.to_datetime(df["order_placement_date"])
+
+# 🔹 Convert OTIF to numeric 0/1 safely (handles strings like "Yes"/"No" too)
+otif_raw = df["otif"]
+
+if otif_raw.dtype == bool:
+    df["otif_num"] = otif_raw.astype(int)
+else:
+    # Map common yes/no style text to 1/0, fallback to numeric, then fill NaN with 0
+    mapping = {
+        "Yes": 1, "yes": 1, "Y": 1, "y": 1, "True": 1, "true": 1, "1": 1,
+        "No": 0, "no": 0, "N": 0, "n": 0, "False": 0, "false": 0, "0": 0
+    }
+    df["otif_num"] = otif_raw.map(mapping)
+    df["otif_num"] = pd.to_numeric(df["otif_num"], errors="coerce").fillna(0)
+
+# Also make sure qty columns are numeric
+df["order_qty"] = pd.to_numeric(df["order_qty"], errors="coerce").fillna(0)
+df["delivery_qty"] = pd.to_numeric(df["delivery_qty"], errors="coerce").fillna(0)
 
 # -------------------------------
 # 5. KPI CARDS
@@ -154,7 +172,7 @@ col1, col2, col3, col4 = st.columns(4)
 total_orders = df["order_id"].nunique()
 total_order_qty = df["order_qty"].sum()
 fill_rate = (df["delivery_qty"].sum() / df["order_qty"].sum()) * 100 if df["order_qty"].sum() > 0 else 0
-otif_rate = (df["otif"].sum() / len(df)) * 100 if len(df) > 0 else 0  # assuming otif is 0/1
+otif_rate = df["otif_num"].mean() * 100 if len(df) > 0 else 0  # now safely numeric
 
 col1.metric("Total Orders", f"{total_orders:,}")
 col2.metric("Total Ordered Qty", f"{total_order_qty:,}")
@@ -172,7 +190,7 @@ ts = (
     df.groupby("order_placement_date")
       .agg(
           total_order_qty=("order_qty", "sum"),
-          avg_otif=("otif", "mean"),
+          avg_otif=("otif_num", "mean"),  # use numeric otif
       )
       .reset_index()
 )
@@ -199,3 +217,4 @@ st.download_button(
     file_name="supply_chain_filtered.csv",
     mime="text/csv"
 )
+
