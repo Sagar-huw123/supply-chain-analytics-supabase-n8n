@@ -1,107 +1,78 @@
-📦 Supply Chain Analytics Dashboard
-Cloud-Native ETL + Analytics using n8n → Supabase (PostgreSQL) → Streamlit
+# 📦 Supply Chain Analytics Dashboard
 
-This project is a fully automated, cloud-based supply chain analytics system built using:
+Cloud-Native ETL + Analytics using n8n → Supabase → Streamlit
 
-n8n for workflow automation
+This project is a fully automated, cloud-based supply chain analytics solution.
 
-Supabase PostgreSQL as the cloud data warehouse
+## 🚀 Live Dashboard
 
-Google Colab for ETL and data modelling
+**Streamlit App:** 
+https://supply-chain-analytics-supabase-n8n-bxdk8w8lhw65c7wt3aitpy.streamlit.app/
 
-Streamlit for dashboarding
-
-Plotly for interactive visualizations
-
-🚀 Live Streamlit App
-
-🔗 https://supply-chain-analytics-supabase-n8n-bxdk8w8lhw65c7wt3aitpy.streamlit.app/
-
-🧠 Project Architecture
+## 🧠 Project Architecture
 n8n (workflow automation)
-        ↓
-Supabase (PostgreSQL Data Warehouse)
-        ↓
-Google Colab (ETL, Cleaning, Modelling)
-        ↓
-GitHub (Version Control)
-        ↓
-Streamlit Cloud (Live Analytics Dashboard)
+↓
+Supabase (PostgreSQL data warehouse)
+↓
+Google Colab (ETL + modelling)
+↓
+GitHub (version control)
+↓
+Streamlit Cloud (live dashboard)
 
-🎯 Key Features
-1️⃣ Automated ETL Pipeline (n8n → Supabase)
 
-Automatically extracts incoming order-level data
+## 🎯 Key Features
 
-Cleans, formats, and loads it into Supabase tables
+### 1. Automated ETL Pipeline (n8n → Supabase)
+- Order-level data automatically captured via n8n
+- Cleaned, transformed, and loaded into Supabase tables
+- Supports incremental/event-driven updates
 
-Supports incremental updates
+### 2. Interactive Supply Chain Dashboard
+- Built using Streamlit + PostgreSQL
+- **KPIs:**
+  - Total Orders
+  - Total Ordered Quantity
+  - Fill Rate (In Full %)
+  - OTIF % (On Time In Full)
+  - Revenue (INR)
+- **Visualizations:**
+  - Order Quantity Trend
+  - OTIF Trend
+  - Customer Segmentation Treemap (Revenue × OTIF)
+  - OTIF by City
+  - OTIF by Product Category
+  - Detailed data explorer + CSV export
+- **Filters:**
+  - City
+  - Product Category
+  - Date Range
 
-2️⃣ Real-time Analytics Dashboard
+## 🗄️ Database Schema (Supabase)
 
-Built on Streamlit with direct PostgreSQL queries.
+**Fact Tables:**
+- `fact_order_line`
+- `fact_aggregate`
 
-Includes:
+**Dimension Tables:**
+- `dim_customers`
+- `dim_products`
+- `dim_targets_orders`
 
-🔹 KPIs
+## 📁 Repository Structure
 
-Total Orders
-
-Total Ordered Quantity
-
-Fill Rate (In Full %)
-
-OTIF % (On Time In Full)
-
-Revenue (INR)
-
-🔹 Visualizations
-
-Line charts for Order Quantity & OTIF% over time
-
-Treemap: Customer Segmentation (Revenue vs OTIF)
-
-Bar chart: OTIF by City
-
-Bar chart: OTIF by Product Category
-
-Downloadable filtered dataset
-
-🔹 Filters
-
-Customer City
-
-Product Category
-
-Date Range
-
-🗄️ Database Schema (Supabase)
-Fact Tables
-
-fact_order_line
-
-fact_aggregate
-
-Dimension Tables
-
-dim_customers
-
-dim_products
-
-dim_targets_orders
-
-📁 Repository Structure
 supply-chain-analytics-supabase-n8n/
 │── app.py
 │── requirements.txt
 │── SUPPLY_CHAIN_ANALYTICS_USING_SUPABASE_AND_N8N.ipynb
 │── README.md
 
-🔌 Streamlit → Supabase Connection
-.streamlit/secrets.toml
 
-(Stored in Streamlit Cloud, NOT in GitHub)
+## 🔌 Streamlit → Supabase Connection
 
+**`.streamlit/secrets.toml`** (Stored in Streamlit Cloud, not in GitHub)
+
+```toml
 [db]
 host = "YOUR_SUPABASE_HOST"
 database = "postgres"
@@ -109,50 +80,48 @@ user = "YOUR_DB_USER"
 password = "YOUR_DB_PASSWORD"
 port = "5432"
 
+Streamlit usage:
 
-Accessed in code via:
-
+python
 st.secrets["db"]["host"]
+🛠️ Run Locally
+Clone the repo
 
-🛠️ Run the Project Locally
-1️⃣ Clone the repo
+bash
 git clone https://github.com/Sagar-huw123/supply-chain-analytics-supabase-n8n.git
 cd supply-chain-analytics-supabase-n8n
+Install dependencies
 
-2️⃣ Install dependencies
+bash
 pip install -r requirements.txt
+Run the dashboard
 
-3️⃣ Run Streamlit app
+bash
 streamlit run app.py
-
 ☁️ Deployment (Streamlit Cloud)
+Connect your GitHub repository
 
-Connect GitHub repository
+Choose app.py as the entry file
 
-Select app.py
-
-Add secrets under Settings → Secrets
+Add secrets in Settings → Secrets
 
 Deploy
 
 📈 Future Enhancements
-
 Multi-page Streamlit app
 
-Forecasting module (ARIMA / Prophet)
+Forecasting models (ARIMA / Prophet)
 
-Inventory analytics
+Inventory & safety stock analytics
 
-Customer-level drilldown
+Customer drilldown
 
-Route optimization
+Route optimization metrics
 
-👨‍💻 Author
-
+## 👨‍💻 Author
 Sagar Panja
-PGDM – Business Analytics
-Focused on Supply Chain Analytics, Data Engineering, and Cloud Systems.
+PGDM — Business Analytics
+Supply Chain Analytics • ETL Pipelines • Cloud Systems
 
 ⭐ Support
-
-If you found this project helpful, please star ⭐ the repository!
+If you like this project, please ⭐ star the repository!
