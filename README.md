@@ -80,6 +80,8 @@ user = "YOUR_DB_USER"
 password = "YOUR_DB_PASSWORD"
 port = "5432"
 
+```
+
 Streamlit usage:
 
 python
