@@ -44,118 +44,140 @@ def run_query(query, params=None):
 # -------------------------------
 st.sidebar.header("Filters")
 
-# ⚠️ Change table/column names as per your DB schema
-# Example assumes a table: supply_chain_orders
-# with columns: order_date, region, product_sku, quantity, lead_time_days, cost
+# We'll use fact_order_line as the main table
 
-# Load basic dimensions for filters
 try:
-    regions_df = run_query("SELECT DISTINCT region FROM supply_chain_orders ORDER BY region;")
-    skus_df = run_query("SELECT DISTINCT product_sku FROM supply_chain_orders ORDER BY product_sku;")
+    # Get distinct cities and product categories for filters
+    cities_df = run_query("""
+        SELECT DISTINCT c.city
+        FROM fact_order_line f
+        JOIN dim_customers c ON f.customer_id = c.customer_id
+        WHERE c.city IS NOT NULL
+        ORDER BY c.city;
+    """)
+
+    categories_df = run_query("""
+        SELECT DISTINCT p.category
+        FROM fact_order_line f
+        JOIN dim_products p ON f.product_id = p.product_id
+        WHERE p.category IS NOT NULL
+        ORDER BY p.category;
+    """)
 except Exception as e:
-    st.error("Error connecting to database. Please check your credentials and table names.")
+    st.error(f"DB error while loading filters: {e}")
     st.stop()
 
-regions = ["All"] + regions_df["region"].dropna().tolist()
-skus = ["All"] + skus_df["product_sku"].dropna().tolist()
+cities = ["All"] + cities_df["city"].dropna().tolist()
+categories = ["All"] + categories_df["category"].dropna().tolist()
 
-selected_region = st.sidebar.selectbox("Region", regions)
-selected_sku = st.sidebar.selectbox("Product / SKU", skus)
+selected_city = st.sidebar.selectbox("Customer City", cities)
+selected_category = st.sidebar.selectbox("Product Category", categories)
 
 date_range = st.sidebar.date_input(
-    "Date range",
+    "Order placement date range",
     value=[],
     help="Optional filter – leave empty to use full data range."
 )
 
 # -------------------------------
-# 4. BUILD FILTERED DATA QUERY
+# 4. MAIN DATA QUERY
 # -------------------------------
+
 query = """
     SELECT
-        order_date,
-        region,
-        product_sku,
-        quantity,
-        lead_time_days,
-        cost
-    FROM supply_chain_orders
+        f.order_id,
+        f.order_placement_date,
+        f.customer_id,
+        f.product_id,
+        f.order_qty,
+        f.delivery_qty,
+        f."On Time"      AS on_time,
+        f."In Full"      AS in_full,
+        f."On Time In Full" AS otif,
+        c.customer_name,
+        c.city,
+        p.product_name,
+        p.category
+    FROM fact_order_line f
+    JOIN dim_customers c ON f.customer_id = c.customer_id
+    JOIN dim_products  p ON f.product_id = p.product_id
     WHERE 1=1
 """
 
 params = []
 
-if selected_region != "All":
-    query += " AND region = %s"
-    params.append(selected_region)
+if selected_city != "All":
+    query += " AND c.city = %s"
+    params.append(selected_city)
 
-if selected_sku != "All":
-    query += " AND product_sku = %s"
-    params.append(selected_sku)
+if selected_category != "All":
+    query += " AND p.category = %s"
+    params.append(selected_category)
 
 if len(date_range) == 2:
-    query += " AND order_date BETWEEN %s AND %s"
+    query += " AND f.order_placement_date BETWEEN %s AND %s"
     params.append(date_range[0])
     params.append(date_range[1])
 
-query += " ORDER BY order_date;"
+query += " ORDER BY f.order_placement_date;"
 
-df = run_query(query, params)
+try:
+    df = run_query(query, params)
+except Exception as e:
+    st.error(f"DB error while loading main data: {e}")
+    st.stop()
 
 if df.empty:
     st.warning("No data found for the selected filters.")
     st.stop()
 
-# Convert date column
-df["order_date"] = pd.to_datetime(df["order_date"])
+df["order_placement_date"] = pd.to_datetime(df["order_placement_date"])
 
 # -------------------------------
 # 5. KPI CARDS
 # -------------------------------
 col1, col2, col3, col4 = st.columns(4)
 
-total_orders = len(df)
-total_qty = df["quantity"].sum()
-avg_lead_time = df["lead_time_days"].mean()
-total_cost = df["cost"].sum()
+total_orders = df["order_id"].nunique()
+total_order_qty = df["order_qty"].sum()
+fill_rate = (df["delivery_qty"].sum() / df["order_qty"].sum()) * 100 if df["order_qty"].sum() > 0 else 0
+otif_rate = (df["otif"].sum() / len(df)) * 100 if len(df) > 0 else 0  # assuming otif is 0/1
 
 col1.metric("Total Orders", f"{total_orders:,}")
-col2.metric("Total Quantity", f"{total_qty:,}")
-col3.metric("Avg Lead Time (days)", f"{avg_lead_time:.2f}")
-col4.metric("Total Cost", f"₹{total_cost:,.0f}")
+col2.metric("Total Ordered Qty", f"{total_order_qty:,}")
+col3.metric("Fill Rate (In Full)", f"{fill_rate:.1f}%")
+col4.metric("OTIF %", f"{otif_rate:.1f}%")
 
 st.markdown("---")
 
 # -------------------------------
-# 6. TIME-SERIES CHARTS
+# 6. TIME SERIES – OTIF & QUANTITY
 # -------------------------------
-st.subheader("📈 Trends Over Time")
+st.subheader("📈 OTIF & Volume Over Time")
 
 ts = (
-    df.groupby("order_date")
+    df.groupby("order_placement_date")
       .agg(
-          total_quantity=("quantity", "sum"),
-          avg_lead_time=("lead_time_days", "mean"),
-          total_cost=("cost", "sum"),
+          total_order_qty=("order_qty", "sum"),
+          avg_otif=("otif", "mean"),
       )
       .reset_index()
 )
 
-tab1, tab2, tab3 = st.tabs(["Quantity", "Lead Time", "Cost"])
+tab1, tab2 = st.tabs(["Order Quantity", "OTIF %"])
 
 with tab1:
-    st.line_chart(ts.set_index("order_date")[["total_quantity"]])
+    st.line_chart(ts.set_index("order_placement_date")[["total_order_qty"]])
 
 with tab2:
-    st.line_chart(ts.set_index("order_date")[["avg_lead_time"]])
-
-with tab3:
-    st.line_chart(ts.set_index("order_date")[["total_cost"]])
+    ts_otif = ts.copy()
+    ts_otif["otif_percent"] = ts_otif["avg_otif"] * 100
+    st.line_chart(ts_otif.set_index("order_placement_date")[["otif_percent"]])
 
 # -------------------------------
-# 7. DRILL DOWN TABLE
+# 7. DETAIL TABLE
 # -------------------------------
-st.subheader("🔍 Detailed Records")
+st.subheader("🔍 Detailed Orders")
 st.dataframe(df, use_container_width=True)
 
 st.download_button(
@@ -164,3 +186,4 @@ st.download_button(
     file_name="supply_chain_filtered.csv",
     mime="text/csv"
 )
+
