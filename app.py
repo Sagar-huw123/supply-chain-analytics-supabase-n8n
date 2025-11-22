@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import plotly.express as px
 
 # -------------------------------
 # 1. PAGE CONFIG
@@ -109,7 +110,8 @@ query = """
         c.customer_name,
         c.city,
         p.product_name,
-        p.category
+        p.category,
+        p.price_INR          AS price_inr
     FROM fact_order_line f
     JOIN dim_customers c ON f.customer_id = c.customer_id
     JOIN dim_products  p ON f.product_id = p.product_id
@@ -146,13 +148,12 @@ if df.empty:
 # Ensure proper types
 df["order_placement_date"] = pd.to_datetime(df["order_placement_date"])
 
-# 🔹 Convert OTIF to numeric 0/1 safely (handles strings like "Yes"/"No" too)
+# ---- numeric conversions ----
 otif_raw = df["otif"]
 
 if otif_raw.dtype == bool:
     df["otif_num"] = otif_raw.astype(int)
 else:
-    # Map common yes/no style text to 1/0, fallback to numeric, then fill NaN with 0
     mapping = {
         "Yes": 1, "yes": 1, "Y": 1, "y": 1, "True": 1, "true": 1, "1": 1,
         "No": 0, "no": 0, "N": 0, "n": 0, "False": 0, "false": 0, "0": 0
@@ -160,9 +161,12 @@ else:
     df["otif_num"] = otif_raw.map(mapping)
     df["otif_num"] = pd.to_numeric(df["otif_num"], errors="coerce").fillna(0)
 
-# Also make sure qty columns are numeric
 df["order_qty"] = pd.to_numeric(df["order_qty"], errors="coerce").fillna(0)
 df["delivery_qty"] = pd.to_numeric(df["delivery_qty"], errors="coerce").fillna(0)
+df["price_inr"] = pd.to_numeric(df["price_inr"], errors="coerce").fillna(0)
+
+# Revenue = order_qty * price
+df["revenue_inr"] = df["order_qty"] * df["price_inr"]
 
 # -------------------------------
 # 5. KPI CARDS
@@ -205,8 +209,108 @@ with tab2:
     ts_otif["otif_percent"] = ts_otif["avg_otif"] * 100
     st.line_chart(ts_otif.set_index("order_placement_date")[["otif_percent"]])
 
+st.markdown("---")
+
 # -------------------------------
-# 7. DETAIL TABLE
+# 7. TREEMAP – CUSTOMER SEGMENTATION
+# -------------------------------
+st.subheader("🧩 Customer Segmentation by Revenue and OTIF")
+
+cust_seg = (
+    df.groupby("customer_name")
+      .agg(
+          revenue_inr=("revenue_inr", "sum"),
+          otif_percent=("otif_num", lambda x: x.mean() * 100),
+      )
+      .reset_index()
+)
+
+if not cust_seg.empty:
+    # value segments based on revenue tertiles
+    high_thr = cust_seg["revenue_inr"].quantile(0.66)
+    low_thr = cust_seg["revenue_inr"].quantile(0.33)
+
+    def value_segment(val):
+        if val >= high_thr:
+            return "High Value"
+        elif val >= low_thr:
+            return "Medium Value"
+        else:
+            return "Low Value"
+
+    def otif_segment(p):
+        if p >= 90:
+            return "Good OTIF"
+        elif p >= 75:
+            return "Average OTIF"
+        else:
+            return "Poor OTIF"
+
+    cust_seg["value_segment"] = cust_seg["revenue_inr"].apply(value_segment)
+    cust_seg["otif_segment"] = cust_seg["otif_percent"].apply(otif_segment)
+    cust_seg["segment"] = cust_seg["value_segment"] + " - " + cust_seg["otif_segment"]
+
+    fig_treemap = px.treemap(
+        cust_seg,
+        path=["segment", "customer_name"],
+        values="revenue_inr",
+        color="otif_percent",
+        hover_data={
+            "revenue_inr": ":,.0f",
+            "otif_percent": ":.1f",
+            "segment": False
+        },
+    )
+    fig_treemap.update_layout(margin=dict(t=40, l=0, r=0, b=0))
+    st.plotly_chart(fig_treemap, use_container_width=True)
+else:
+    st.info("No customer data available for treemap.")
+
+st.markdown("---")
+
+# -------------------------------
+# 8. OTHER VISUALS – OTIF BY CITY & CATEGORY
+# -------------------------------
+st.subheader("🌍 OTIF Performance by City and Product Category")
+
+city_df = (
+    df.groupby("city")
+      .agg(otif_percent=("otif_num", lambda x: x.mean() * 100))
+      .reset_index()
+      .sort_values("otif_percent", ascending=False)
+)
+
+cat_df = (
+    df.groupby("category")
+      .agg(otif_percent=("otif_num", lambda x: x.mean() * 100))
+      .reset_index()
+      .sort_values("otif_percent", ascending=False)
+)
+
+tab_city, tab_cat = st.tabs(["OTIF by City", "OTIF by Product Category"])
+
+with tab_city:
+    if not city_df.empty:
+        fig_city = px.bar(city_df, x="city", y="otif_percent",
+                          labels={"city": "City", "otif_percent": "OTIF %"})
+        fig_city.update_layout(xaxis_tickangle=-45, margin=dict(t=40, l=0, r=0, b=120))
+        st.plotly_chart(fig_city, use_container_width=True)
+    else:
+        st.info("No city-level data available.")
+
+with tab_cat:
+    if not cat_df.empty:
+        fig_cat = px.bar(cat_df, x="category", y="otif_percent",
+                         labels={"category": "Product Category", "otif_percent": "OTIF %"})
+        fig_cat.update_layout(xaxis_tickangle=-45, margin=dict(t=40, l=0, r=0, b=120))
+        st.plotly_chart(fig_cat, use_container_width=True)
+    else:
+        st.info("No category-level data available.")
+
+st.markdown("---")
+
+# -------------------------------
+# 9. DETAIL TABLE
 # -------------------------------
 st.subheader("🔍 Detailed Orders")
 st.dataframe(df, use_container_width=True)
