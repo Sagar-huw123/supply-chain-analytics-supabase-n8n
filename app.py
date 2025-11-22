@@ -18,8 +18,12 @@ st.caption("Powered by n8n → Supabase (PostgreSQL) → Streamlit")
 # -------------------------------
 # 2. DB CONNECTION (Supabase)
 # -------------------------------
-@st.cache_resource
+
 def get_connection():
+    """
+    Open a fresh connection for each query.
+    No caching, no autocommit – safer with Supabase/pgBouncer.
+    """
     conn = psycopg2.connect(
         host=st.secrets["db"]["host"],
         database=st.secrets["db"]["database"],
@@ -30,18 +34,24 @@ def get_connection():
     )
     return conn
 
-@st.cache_data
+
 def run_query(query, params=None):
+    """
+    Run a SQL query and return a pandas DataFrame.
+    Rolls back on error so the connection is not left in an aborted state.
+    """
     conn = get_connection()
-    conn.autocommit = True  # ✅ important: no stuck transactions
     try:
         with conn.cursor() as cur:
             cur.execute(query, params or ())
             rows = cur.fetchall()
-        return pd.DataFrame(rows)
+        df = pd.DataFrame(rows)
+        return df
+    except Exception as e:
+        conn.rollback()
+        raise e
     finally:
         conn.close()
-
 
 
 # -------------------------------
@@ -94,9 +104,9 @@ query = """
         f.product_id,
         f.order_qty,
         f.delivery_qty,
-        f."On Time"      AS on_time,
-        f."In Full"      AS in_full,
-        f."On Time In Full" AS otif,
+        f."On Time"          AS on_time,
+        f."In Full"          AS in_full,
+        f."On Time In Full"  AS otif,
         c.customer_name,
         c.city,
         p.product_name,
@@ -189,4 +199,3 @@ st.download_button(
     file_name="supply_chain_filtered.csv",
     mime="text/csv"
 )
-
