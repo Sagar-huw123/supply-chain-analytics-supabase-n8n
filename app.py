@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 st.title("📦 Supply Chain Analytics Dashboard")
-st.caption("Powered by n8n → Supabase (PostgreSQL) → Streamlit")
+st.caption("Powered by n8n → Supabase (PostgreSQL) → Google Colab → GitHub → Streamlit")
 
 # -------------------------------
 # 2. DB CONNECTION (Supabase)
@@ -97,25 +97,25 @@ date_range = st.sidebar.date_input(
 # -------------------------------
 
 query = """
-    SELECT
-        f.order_id,
-        f.order_placement_date,
-        f.customer_id,
-        f.product_id,
-        f.order_qty,
-        f.delivery_qty,
-        f."On Time"          AS on_time,
-        f."In Full"          AS in_full,
-        f."On Time In Full"  AS otif,
-        c.customer_name,
-        c.city,
-        p.product_name,
-        p.category,
-        p.price_INR          AS price_inr
-    FROM fact_order_line f
-    JOIN dim_customers c ON f.customer_id = c.customer_id
-    JOIN dim_products  p ON f.product_id = p.product_id
-    WHERE 1=1
+   SELECT
+    f.order_id,
+    f.order_placement_date,
+    f.customer_id,
+    f.product_id,
+    f.order_qty,
+    f.delivery_qty,
+    f."On Time"          AS on_time,
+    f."In Full"          AS in_full,
+    f."On Time In Full"  AS otif,
+    c.customer_name,
+    c.city,
+    p.product_name,
+    p.category,
+    p."price_INR"        AS price_inr
+FROM fact_order_line f
+JOIN dim_customers c ON f.customer_id = c.customer_id
+JOIN dim_products  p ON f.product_id = p.product_id
+WHERE 1=1
 """
 
 params = []
