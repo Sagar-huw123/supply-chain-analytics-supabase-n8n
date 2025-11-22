@@ -33,10 +33,15 @@ def get_connection():
 @st.cache_data
 def run_query(query, params=None):
     conn = get_connection()
-    with conn.cursor() as cur:
-        cur.execute(query, params or ())
-        rows = cur.fetchall()
-    return pd.DataFrame(rows)
+    conn.autocommit = True  # ✅ important: no stuck transactions
+    try:
+        with conn.cursor() as cur:
+            cur.execute(query, params or ())
+            rows = cur.fetchall()
+        return pd.DataFrame(rows)
+    finally:
+        conn.close()
+
 
 
 # -------------------------------
@@ -44,25 +49,22 @@ def run_query(query, params=None):
 # -------------------------------
 st.sidebar.header("Filters")
 
-# We'll use fact_order_line as the main table
-
 try:
-    # Get distinct cities and product categories for filters
+    # Just read directly from the dimension tables
     cities_df = run_query("""
-        SELECT DISTINCT c.city
-        FROM fact_order_line f
-        JOIN dim_customers c ON f.customer_id = c.customer_id
-        WHERE c.city IS NOT NULL
-        ORDER BY c.city;
+        SELECT DISTINCT city
+        FROM dim_customers
+        WHERE city IS NOT NULL
+        ORDER BY city;
     """)
 
     categories_df = run_query("""
-        SELECT DISTINCT p.category
-        FROM fact_order_line f
-        JOIN dim_products p ON f.product_id = p.product_id
-        WHERE p.category IS NOT NULL
-        ORDER BY p.category;
+        SELECT DISTINCT category
+        FROM dim_products
+        WHERE category IS NOT NULL
+        ORDER BY category;
     """)
+
 except Exception as e:
     st.error(f"DB error while loading filters: {e}")
     st.stop()
@@ -78,6 +80,7 @@ date_range = st.sidebar.date_input(
     value=[],
     help="Optional filter – leave empty to use full data range."
 )
+
 
 # -------------------------------
 # 4. MAIN DATA QUERY
