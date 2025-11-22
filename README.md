@@ -1,63 +1,49 @@
 📦 Supply Chain Analytics Dashboard
 Cloud-Native ETL + Analytics using n8n → Supabase (PostgreSQL) → Streamlit
 
-This project is a fully automated supply chain analytics system built using:
+This project is a fully automated, cloud-based supply chain analytics system built using:
 
-n8n – Automated ETL workflows
+n8n for workflow automation
 
-Supabase (PostgreSQL) – Cloud data warehouse
+Supabase PostgreSQL as the cloud data warehouse
 
-Google Colab – Data processing & modelling
+Google Colab for ETL and data modelling
 
-Streamlit – Interactive dashboard
+Streamlit for dashboarding
 
-Plotly – Visual analytics
+Plotly for interactive visualizations
 
-It performs real-time supply chain performance monitoring, OTIF reporting, customer segmentation, and product/category-level insights.
+🚀 Live Streamlit App
 
-🚀 Live Dashboard
-
-🔗 Streamlit App:
-👉 https://supply-chain-analytics-supabase-n8n-bxdk8w8lhw65c7wt3aitpy.streamlit.app/
+🔗 https://supply-chain-analytics-supabase-n8n-bxdk8w8lhw65c7wt3aitpy.streamlit.app/
 
 🧠 Project Architecture
 n8n (workflow automation)
         ↓
 Supabase (PostgreSQL Data Warehouse)
         ↓
-Google Colab (ETL, cleaning, modelling)
+Google Colab (ETL, Cleaning, Modelling)
         ↓
-GitHub (version control)
+GitHub (Version Control)
         ↓
-Streamlit Cloud (live analytics dashboard)
+Streamlit Cloud (Live Analytics Dashboard)
 
 🎯 Key Features
-1️⃣ Automated ETL Pipeline
+1️⃣ Automated ETL Pipeline (n8n → Supabase)
 
-n8n fetches/receives order-level data
+Automatically extracts incoming order-level data
 
-Cleans + formats data
+Cleans, formats, and loads it into Supabase tables
 
-Pushes into Supabase PostgreSQL in real-time
+Supports incremental updates
 
-2️⃣ Analytical Dataset
+2️⃣ Real-time Analytics Dashboard
 
-Stored in the following tables:
+Built on Streamlit with direct PostgreSQL queries.
 
-fact_order_line
+Includes:
 
-dim_customers
-
-dim_products
-
-dim_targets_orders
-
-fact_aggregate
-
-These tables provide a 360° view of customer, product, and order-level performance.
-
-📊 Dashboard Highlights (Streamlit)
-✔️ KPIs
+🔹 KPIs
 
 Total Orders
 
@@ -69,21 +55,19 @@ OTIF % (On Time In Full)
 
 Revenue (INR)
 
-✔️ Visualizations
+🔹 Visualizations
 
-Order Quantity Trend
-
-OTIF % Trend
+Line charts for Order Quantity & OTIF% over time
 
 Treemap: Customer Segmentation (Revenue vs OTIF)
 
-OTIF by City (Bar Chart)
+Bar chart: OTIF by City
 
-OTIF by Product Category (Bar Chart)
+Bar chart: OTIF by Product Category
 
-Detailed Order Table + CSV Export
+Downloadable filtered dataset
 
-✔️ Filters
+🔹 Filters
 
 Customer City
 
@@ -91,27 +75,33 @@ Product Category
 
 Date Range
 
-🛠️ Technologies Used
-Layer	Technology
-Data Automation	n8n
-Database	Supabase PostgreSQL
-Backend Query Layer	psycopg2
-Frontend Dashboard	Streamlit
-Visualizations	Plotly, Streamlit charts
-Version Control	Git + GitHub
-Development	Google Colab, Python
+🗄️ Database Schema (Supabase)
+Fact Tables
+
+fact_order_line
+
+fact_aggregate
+
+Dimension Tables
+
+dim_customers
+
+dim_products
+
+dim_targets_orders
+
 📁 Repository Structure
 supply-chain-analytics-supabase-n8n/
-│── app.py                # Streamlit application
-│── requirements.txt      # Python dependencies
-│── SUPPLY_CHAIN_ANALYTICS_USING_SUPABASE_AND_N8N.ipynb  # Colab ETL notebook
-│── README.md             # Project documentation
+│── app.py
+│── requirements.txt
+│── SUPPLY_CHAIN_ANALYTICS_USING_SUPABASE_AND_N8N.ipynb
+│── README.md
 
-🔌 Connecting Streamlit to Supabase
-
-The app uses Streamlit Secrets for secure DB credentials.
-
+🔌 Streamlit → Supabase Connection
 .streamlit/secrets.toml
+
+(Stored in Streamlit Cloud, NOT in GitHub)
+
 [db]
 host = "YOUR_SUPABASE_HOST"
 database = "postgres"
@@ -120,11 +110,49 @@ password = "YOUR_DB_PASSWORD"
 port = "5432"
 
 
-Streamlit loads values using:
+Accessed in code via:
 
 st.secrets["db"]["host"]
 
-⚙️ Running the Project Locally
-1️⃣ Clone the Repo
+🛠️ Run the Project Locally
+1️⃣ Clone the repo
 git clone https://github.com/Sagar-huw123/supply-chain-analytics-supabase-n8n.git
 cd supply-chain-analytics-supabase-n8n
+
+2️⃣ Install dependencies
+pip install -r requirements.txt
+
+3️⃣ Run Streamlit app
+streamlit run app.py
+
+☁️ Deployment (Streamlit Cloud)
+
+Connect GitHub repository
+
+Select app.py
+
+Add secrets under Settings → Secrets
+
+Deploy
+
+📈 Future Enhancements
+
+Multi-page Streamlit app
+
+Forecasting module (ARIMA / Prophet)
+
+Inventory analytics
+
+Customer-level drilldown
+
+Route optimization
+
+👨‍💻 Author
+
+Sagar Panja
+PGDM – Business Analytics
+Focused on Supply Chain Analytics, Data Engineering, and Cloud Systems.
+
+⭐ Support
+
+If you found this project helpful, please star ⭐ the repository!
